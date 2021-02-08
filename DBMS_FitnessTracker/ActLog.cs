@@ -13,13 +13,16 @@ namespace DBMS_FitnessTracker
 {
     public partial class ActLog : Form
     {
-        public static string constr1= "server=localhost;user id=root;database=ft;CharSet=utf8;persistsecurityinfo=True;password=harshini_27";
+        public static string constr1 = System.Configuration.ConfigurationManager.ConnectionStrings["myConStr"].ConnectionString;
         MySqlConnection condatabase = new MySqlConnection(constr1);
+        int logno1 = 0,check=0;
+        int uid = 0;
         public ActLog()
         {
             InitializeComponent();
+            FindingUser();
+            GoalsToDo();
             fillcombo();
-            check();
             ActDone();
         }
         void fillcombo()
@@ -43,85 +46,170 @@ namespace DBMS_FitnessTracker
             }
             condatabase.Close();  
         }
-        void check()
+       
+       
+        private void ActLog_Load(object sender, EventArgs e)
         {
-            int i = 0;
+            
+        }
+        void FindingUser()
+        {
+
             condatabase.Open();
-            string Query = "select * from ft.mustdo;";
-            MySqlCommand cmddb = new MySqlCommand(Query, condatabase);
+            string Query = "select * from user where name='" + Program.userName + "';";            
+            try
+            {
+               MySqlCommand cmd = new MySqlCommand(Query, condatabase);
+                MySqlDataReader myReader = cmd.ExecuteReader();
+                while (myReader.Read())
+                {
+                    uid = myReader.GetInt32("UserID");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            condatabase.Close();
+        }
+
+        
+
+        private void actsub_Click(object sender, EventArgs e)
+        {
+            int  id = 0;
+            float CaloriesBurnt=0;
+            string intensity=" ",ActName="";
+            //To insert the logno into the activitychart table
+            condatabase.Open();
+            string Query = "select max(LogNo)+1 as Log from activitychart;";
+            MySqlCommand cmd = new MySqlCommand(Query, condatabase);
             MySqlDataReader myReader;
             try
             {
-                CheckBox box;
-                myReader = cmddb.ExecuteReader();
+                //condatabase.Open();
+                myReader = cmd.ExecuteReader();
                 while (myReader.Read())
                 {
-                    string sId = myReader.GetString("ActivityID");
-                    box = new CheckBox();
-                    box.Tag = i.ToString();
-                    box.Text = "a";
-                    box.AutoSize = true;
-                    box.Location = new Point(75, i * 25);
-                    box.Padding = new Padding(3); //box.Location = new Point(i * 50, 10); //horizontal
-                    this.Controls.Add(box);
+                    logno1 = myReader.GetInt32("Log");
                 }
+                
+            }
+            catch(Exception er)
+            { 
+                MessageBox.Show(er.Message);
+            }
+            condatabase.Close();
+            condatabase.Open();
+            //To get activity id from master table using activity name
+            Query ="select * from activitymaster where activityname='"+actiname.Text +"' ;";
+           cmd = new MySqlCommand(Query, condatabase);
+            try
+            {
+                // 
+                // 
+                myReader = cmd.ExecuteReader();
+                while (myReader.Read())
+                {
+                    id = myReader.GetInt32("ActivityID");
+                    CaloriesBurnt = myReader.GetFloat("CaloriesPerMin");
+                    ActName = myReader.GetString("ActivityName");
+                }
+               // condatabase.Close();
             }
             catch(Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
-            condatabase.Close();               
-        }
-       
-
-        private void ActLog_Load(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void actsub_Click(object sender, EventArgs e)
-        {
-           // condatabase.Open();
-            //string Query="insert into activitychart"
-        }
-
-        private void FillCombo_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void mustdo_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void dolist_SelectedIndexChanged(object sender, EventArgs e)
-        {
+            condatabase.Close();
+            //To get type of activity(high or low)
+            if (workhigh.Checked && worklow.Checked)
+                MessageBox.Show("Select Anyone type");
+            else if (workhigh.Checked)
+                intensity = workhigh.Text;
+            else if (worklow.Checked)
+                intensity = worklow.Text;
+            else
+                MessageBox.Show("Please Enter the Workout Intensity");
+            //To calculate the Calories burnt
+            string duration = "";
+            duration=actdur1.Text;
+            int x = Convert.ToInt32(duration);
+            
+            
+            float temp = x * CaloriesBurnt;
+            condatabase.Open();
+            Query ="insert into activitychart(LogNo,Adate,AID,Duration,Type,CaloriesBurnt,UserID,Remark) values("+ logno1 + ",CURDATE(),"+id+","+x+",'"+intensity+"',"+temp+","+uid+",'"+actrem1.Text+"');";
+            try
+            {
+               // condatabase.Open();
+                cmd = new MySqlCommand(Query,condatabase);
+                cmd.ExecuteNonQuery();
+                condatabase.Close();
+                ActDone();
+                Console.WriteLine(logno1);
+                MessageBox.Show("Saved Successfully");
+                
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                condatabase.Close();
+            }
             
         }
-
-        private void history_Click(object sender, EventArgs e)
+        void GoalsToDo()
         {
-
+            condatabase.Open();
+            string goals;
+            int j = 1;
+            string Query = " select * from activitymaster natural join mustdo where userid="+uid+";";
+            MySqlCommand cmd = new MySqlCommand(Query, condatabase);
+            MySqlDataReader myReader = cmd.ExecuteReader();
+            while(myReader.Read())
+            {
+                string sName = myReader.GetString("Activityname");
+                int dur = myReader.GetInt32("Actduration");
+                 goals = j+". "+sName + " - " + dur+" mins";
+                j++;
+                goalsdo.Items.Add(goals);                
+            }
+            
+            condatabase.Close();
         }
+      
+
+        private void finishbut_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+
         void ActDone()
         {
             condatabase.Open();
-            string Query = "select * from activitymaster natural join mustdo where userID=2;";
-            MySqlCommand cmd = new MySqlCommand(Query,condatabase);
-            MySqlDataReader myReader;
-            myReader = cmd.ExecuteReader();
-            while(myReader.Read())
+            string Query = "";            
+            if (logno1 == 0)
+                {
+                    Query = "select * from activitymaster join activitychart on activityid=aid where adate=CURDATE() and userid="+uid+";";
+                }
+                else
+                {
+                    Query = "select * from activitymaster join activitychart on activityid=aid where adate=CURDATE() and userid="+uid+" and logno=" + logno1 + ";";
+                }
+              MySqlCommand  cmd = new MySqlCommand(Query, condatabase);
+               MySqlDataReader myReader = cmd.ExecuteReader();
+            while (myReader.Read())
             {
                 string sName = myReader.GetString("ActivityName");
-                acthis.Items.Add(sName);
+                int dur = myReader.GetInt32("duration");
+                acthis.Items.Add(sName + " - " + dur + " mins ");
+                acthis.SetItemChecked(check, true);
+                logno1++;
+                check++;
             }
             condatabase.Close();
         }
+
     }
 }

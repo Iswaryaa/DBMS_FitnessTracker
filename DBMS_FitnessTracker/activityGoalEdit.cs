@@ -11,15 +11,36 @@ using MySql.Data.MySqlClient;
 
 namespace DBMS_FitnessTracker
 {
-    public partial class standard_diet_log : Form
+    public partial class activityGoatEdit : Form
     {
-        int i = 1;
-        public static string constr1 = "server=localhost;user id=root;database=ft;CharSet=utf8;persistsecurityinfo=True;password=harshini_27";
+        int i = 1,uid=0;
+        public static string constr1 = System.Configuration.ConfigurationManager.ConnectionStrings["myConStr"].ConnectionString;
         MySqlConnection condatabase = new MySqlConnection(constr1);
-        public standard_diet_log()
+        public activityGoatEdit()
         {
             InitializeComponent();
+            FindingUser();
             setact();
+        }
+        void FindingUser()
+        {
+
+            condatabase.Open();
+            string Query = "select * from user where name='" + Program.userName + "';";
+            try
+            {
+                MySqlCommand cmd = new MySqlCommand(Query, condatabase);
+                MySqlDataReader myReader = cmd.ExecuteReader();
+                while (myReader.Read())
+                {
+                    uid = myReader.GetInt32("UserID");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            condatabase.Close();
         }
         void setact()
         {
@@ -27,7 +48,7 @@ namespace DBMS_FitnessTracker
             Label label;
             TextBox textbox;
             condatabase.Open();
-            string Query = "select * from ft.mustdo natural join ft.activitymaster;";
+            string Query = "select * from ft.mustdo natural join ft.activitymaster where userid="+uid+";";
             MySqlCommand cmd = new MySqlCommand(Query,condatabase);
             MySqlDataReader myReader;
             myReader = cmd.ExecuteReader();
@@ -38,19 +59,21 @@ namespace DBMS_FitnessTracker
                 //label.Tag = i.ToString();
                 label.Text = myReader.GetString("ActivityName");
                 label.AutoSize = true;
-                label.Location = new Point(130, i * 25);
+                label.Location = new Point(219, i*60);
+                label.Font = new Font("Microsoft Sans Serif", 10);
                 textbox = new TextBox();
                 textbox.Text = myReader.GetString("ActDuration");
                 //textbox.Tag = i.ToString();
                 textbox.Name = "txt" + i.ToString();
-                textbox.Location = new Point(200, i * 25);
+                textbox.Location = new Point(393, 60*i);
+                textbox.Font = new Font("Microsoft Sans Serif", 10);
                 this.Controls.Add(label);
                 this.Controls.Add(textbox);
                 i++;                 
             }            
             condatabase.Close();         
         }     
-        private void standard_diet_log_Load(object sender, EventArgs e)
+        private void activityGoatEdit_Load(object sender, EventArgs e)
         {
 
         }
@@ -83,12 +106,17 @@ namespace DBMS_FitnessTracker
             for (int j=1;j<k;j++)
             {
                 condatabase.Open();
-                string Query = "update  mustdo set Actduration=" +t[j] + " where ActivityID in (select ActivityID from activitymaster where ActivityName='" + s[j]+ "');";
+                string Query = "update  mustdo set Actduration=" +t[j] + " where ActivityID in (select ActivityID from activitymaster where ActivityName='" + s[j]+ "' and userid="+uid+");";
                 MySqlCommand cmd = new MySqlCommand(Query, condatabase);
                 cmd.ExecuteNonQuery();
                 condatabase.Close();
             }
             MessageBox.Show("Saved Successfully");            
+        }
+
+        private void Closebut_Click(object sender, EventArgs e)
+        {
+            this.Close();
         }
 
         private void label35_Click(object sender, EventArgs e)
